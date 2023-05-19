@@ -1270,6 +1270,18 @@ deps_/home/bandit/dev/SimplestLKM/rickroll.o := \
   include/linux/kernel_read_file.h \
   include/linux/file.h \
   include/linux/sockptr.h \
+  include/linux/kprobes.h \
+    $(wildcard include/config/KRETPROBE_ON_RETHOOK) \
+    $(wildcard include/config/KPROBES_SANITY_TEST) \
+    $(wildcard include/config/OPTPROBES) \
+    $(wildcard include/config/KPROBES_ON_FTRACE) \
+  include/linux/freelist.h \
+  include/linux/rethook.h \
+  arch/x86/include/asm/kprobes.h \
+  include/asm-generic/kprobes.h \
+  arch/x86/include/asm/insn.h \
+  arch/x86/include/asm/inat.h \
+  arch/x86/include/asm/inat_types.h \
 
 /home/bandit/dev/SimplestLKM/rickroll.o: $(deps_/home/bandit/dev/SimplestLKM/rickroll.o)
 

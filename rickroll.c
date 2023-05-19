@@ -4,12 +4,17 @@
 #include <linux/syscalls.h>
 #include <linux/string.h>
 #include <linux/mm.h>
-#include <linux/fs.h>
-
+#include <linux/kallsyms.h>
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Kwai Liu");
 MODULE_DESCRIPTION("Rickroll module");
+
+#define KPROBE_LOOKUP 1
+#include <linux/kprobes.h>
+static struct kprobe kp = {
+    .symbol_name = "kallsyms_lookup_name"
+};
 
 static char *rickroll_filename = "/home/bandit/Music/Rick Astley - Never Gonna Give You Up.mp3";
 
@@ -37,8 +42,7 @@ MODULE_PARM_DESC(rickroll_filename, "The location of the rick roll file");
 #define ENABLE_WRITE_PROTECTION (write_cr0(read_cr0() | 0x10000))
 
 
-static unsigned long **find_sys_call_table(void);
-asmlinkage long rickroll_open(const char __user *filename, int flags, umode_t mode);
+static int rickroll_open(const char __user *filename, int flags, umode_t mode);
 
 asmlinkage long (*original_sys_open)(const char __user *, int, umode_t);
 asmlinkage unsigned long **sys_call_table;
@@ -51,7 +55,15 @@ static int __init rickroll_init(void)
 	return -EINVAL;  /* invalid argument */
     }
 
-    sys_call_table = find_sys_call_table();
+	#ifdef KPROBE_LOOKUP
+    typedef unsigned long (*kallsyms_lookup_name_t)(const char *name);
+    kallsyms_lookup_name_t kallsyms_lookup_name;
+    register_kprobe(&kp);
+    kallsyms_lookup_name = (kallsyms_lookup_name_t) kp.addr;
+    unregister_kprobe(&kp);
+	#endif
+
+    sys_call_table = kallsyms_lookup_name("sys_call_table");
 
     if(!sys_call_table) {
 	printk(KERN_ERR "Couldn't find sys_call_table.\n");
@@ -76,7 +88,7 @@ static int __init rickroll_init(void)
  * Our replacement for sys_open, which forwards to the real sys_open unless the
  * file name ends with .mp3, in which case it opens the rick roll file instead.
  */
-asmlinkage long rickroll_open(const char __user *filename, int flags, umode_t mode)
+static int rickroll_open(const char __user *filename, int flags, umode_t mode)
 {
     int len = strlen(filename);
 
@@ -93,6 +105,7 @@ asmlinkage long rickroll_open(const char __user *filename, int flags, umode_t mo
 
 		unsigned long user_filename_len = strnlen_user(filename, 4096);
 		char kernel_filename[user_filename_len + 1];
+		const char *const_kernel_filename = kernel_filename;
 		copy_from_user(kernel_filename, filename, user_filename_len);
 		kernel_filename[user_filename_len] = '\0';
 
@@ -104,7 +117,7 @@ asmlinkage long rickroll_open(const char __user *filename, int flags, umode_t mo
 		/*
 		 * Copy the rickroll filename back to user space.
 		 */
-		copy_to_user(filename, kernel_filename, strlen(kernel_filename));
+		copy_to_user(filename, const_kernel_filename, strlen(kernel_filename));
 
 		return fd;
     }
@@ -119,35 +132,6 @@ static void __exit rickroll_cleanup(void)
     DISABLE_WRITE_PROTECTION;
     sys_call_table[__NR_open] = (unsigned long *) original_sys_open;
     ENABLE_WRITE_PROTECTION;
-}
-
-
-/*
- * Finds the system call table's location in memory.
- *
- * This is necessary because the sys_call_table symbol is not exported. We find
- * it by iterating through kernel space memory, and looking for a known system
- * call's address. We use sys_close because all the examples I saw used
- * sys_close. Since we know the offset of the pointer to sys_close in the table
- * (__NR_close), we can get the table's base address.
- */
-static unsigned long **find_sys_call_table() {
-    unsigned long offset;
-    unsigned long **sct;
-
-    for(offset = PAGE_OFFSET; offset < ULLONG_MAX; offset += sizeof(void *)) {
-	sct = (unsigned long **) offset;
-
-	if(sct[__NR_close] == (unsigned long *) ksys_write)
-	    return sct;
-    }
-
-    /*
-     * Given the loop limit, it's somewhat unlikely we'll get here. I don't
-     * even know if we can attempt to fetch such high addresses from memory,
-     * and even if you can, it will take a while!
-     */
-    return NULL;
 }
 
 
