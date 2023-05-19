@@ -1,0 +1,11 @@
+*.o
+*.ko
+*.mod.c
+*.mod.o
+*.symvers
+*.order
+*.cscope.*
+*.gcno
+*.gcda
+*.swp
+*~
