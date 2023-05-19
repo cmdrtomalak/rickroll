@@ -1,1 +1,0 @@
-cmd_/home/bandit/dev/SimplestLKM/hello.ko := ld -r -m elf_x86_64 -z noexecstack --no-warn-rwx-segments --build-id=sha1  -T scripts/module.lds -o /home/bandit/dev/SimplestLKM/hello.ko /home/bandit/dev/SimplestLKM/hello.o /home/bandit/dev/SimplestLKM/hello.mod.o;  true
