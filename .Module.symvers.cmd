@@ -1,0 +1,1 @@
+cmd_/home/bandit/dev/SimplestLKM/Module.symvers := sed 's/ko$$/o/' /home/bandit/dev/SimplestLKM/modules.order | scripts/mod/modpost -m -a  -o /home/bandit/dev/SimplestLKM/Module.symvers -e -i Module.symvers   -T -
